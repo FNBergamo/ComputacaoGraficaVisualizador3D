@@ -1,0 +1,16 @@
+# Trajetorias - arquivo de configuração da cena
+# Formato: object nome obj_path tex_path sx sy sz speed
+#          point x y z
+
+object Suzanne ../assets/Modelos3D/Suzanne.obj ../assets/Modelos3D/Suzanne.png 1.0 1.0 1.0 1.5
+point 0.0 0.0 -5.0
+point 4.0 0.0 -2.0
+point 4.0 0.0 3.0
+point -4.0 0.0 3.0
+point -4.0 0.0 -5.0
+
+object Cubo ../assets/Modelos3D/Cube.obj ../assets/tex/pixelWall.png 0.5 0.5 0.5 2.0
+point 0.0 2.0 0.0
+point 3.0 2.0 0.0
+point 3.0 -2.0 0.0
+point 0.0 -2.0 0.0
