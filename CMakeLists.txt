@@ -41,12 +41,6 @@ include_directories(${CMAKE_SOURCE_DIR}/include/glad)
 include_directories(${glm_SOURCE_DIR})
 include_directories(${stb_image_SOURCE_DIR})
 
-
-# Lista de exemplos/exercícios podem ser colocados aqui também
-set(EXERCISES
-
-)
-
 add_compile_options(-Wno-pragmas)
 
 # Define as bibliotecas para cada sistema operacional
@@ -68,9 +62,10 @@ if (NOT EXISTS ${GLAD_C_FILE})
     message(FATAL_ERROR "Arquivo glad.c não encontrado! Baixe a GLAD manualmente em https://glad.dav1d.de/ e coloque glad.h em include/glad/ e glad.c em common/")
 endif()
 
-# Cria os executáveis
-foreach(EXERCISE ${EXERCISES})
-    add_executable(${EXERCISE} src/${EXERCISE}.cpp ${GLAD_C_FILE})
-    target_include_directories(${EXERCISE} PRIVATE ${CMAKE_SOURCE_DIR}/include/glad ${glm_SOURCE_DIR} ${stb_image_SOURCE_DIR})
-    target_link_libraries(${EXERCISE} glfw ${OPENGL_LIBS})
-endforeach()
+add_executable(Diorama src/Diorama/src/main.cpp ${GLAD_C_FILE})
+target_include_directories(Diorama PRIVATE
+    ${CMAKE_SOURCE_DIR}/include/glad
+    ${glm_SOURCE_DIR}
+    ${stb_image_SOURCE_DIR}
+    ${CMAKE_SOURCE_DIR}/Diorama/src)
+target_link_libraries(Diorama glfw ${OPENGL_LIBS})

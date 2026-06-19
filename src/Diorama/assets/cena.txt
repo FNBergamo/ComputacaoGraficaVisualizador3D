@@ -1,0 +1,32 @@
+# ============================================================
+#  Cena do Diorama
+#
+#  light  <nome> on|off  px py pz   r g b   intensidade
+#  object <nome> <geom>  <mtl|-|COL:r,g,b>  <tex|->  px py pz  escala  [spin]
+#  waypoint x y z   -> anexa ponto de trajetoria (Bezier) ao ultimo objeto
+# ============================================================
+
+# ----- Iluminacao de 3 pontos (Phong) -----
+light key  on    6  7  5    1.00 0.95 0.80   1.0
+light fill on   -7  4  4    0.45 0.55 0.90   0.5
+light back on    0  5 -8    0.90 0.75 0.40   0.8
+
+# ----- Objetos da cena -----
+
+# [0] Grama (Grama com material .mtl + textura)
+object Grama    ../assets/Modelos3D/grama/10450_Rectangular_Grass_Patch_v1_iterations-2.obj  ../assets/Modelos3D/grama/10450_Rectangular_Grass_Patch_v1_iterations-2.mtl  ../assets/Modelos3D/grama/10450_Rectangular_Grass_Patch_v1_Diffuse.jpg   0  0.0  0   0.01  scale 10 10 0.1  rot -90 0 0
+
+# [1] Suzanne (Suzanne com material .mtl + textura)
+object Suzanne    ../assets/Modelos3D/Suzanne.obj  ../assets/Modelos3D/Suzanne.mtl  ../assets/Modelos3D/Suzanne.png   -3  1.2  0   1.0
+waypoint  0  7  4
+waypoint  4  8.0  2
+waypoint  4  7 -2
+waypoint  0  8.5 -4
+waypoint -4  7 -2
+waypoint -4  8.0  2
+
+# [2] Templo (Templo com material .mtl + textura)
+object Templo    ../assets/Modelos3D/templo/Japanese_Temple.obj  ../assets/Modelos3D/templo/Japanese_Temple.mtl  ../assets/Modelos3D/templo/Japanese_Temple_Paint2_Japanese_Shrine_Mat_AlbedoTransparency.png   0  0  0   0.2
+
+# [3] Gato (Gato com material .mtl + textura)
+object Gato    ../assets/Modelos3D/gato/gato.obj  ../assets/Modelos3D/gato/gato.mtl  ../assets/Modelos3D/gato/gato_diffuse.jpg   3  0  3   0.01  rot -90 0 0
