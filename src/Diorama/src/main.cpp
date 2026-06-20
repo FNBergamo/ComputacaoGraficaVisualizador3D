@@ -1,25 +1,3 @@
-/* ============================================================================
- *  DIORAMA — Visualizador Final 3D
- *  Computação Gráfica / Unisinos
- *
- *  Integra TODO o pipeline da disciplina numa única cena:
- *    - Carregamento de malhas (.obj) e geometria procedural
- *    - Materiais lidos de .mtl (Ka/Kd/Ks/Ns) + mapeamento de textura
- *    - Iluminação de Phong com 3 fontes de luz (key / fill / back)
- *    - Câmera FPS navegável (teclado + mouse)
- *    - Seleção e transformação de objetos (translação, rotação, escala)
- *    - Animação de trajetória por curva de Bézier (play / pause)
- *
- *  ONDE ESTÁ CADA CÁLCULO (para a arguição):
- *    - Parser do arquivo de cena .............. loadScene()      (este arquivo)
- *    - Parser do material .mtl ................ loadMTL()        (Material.h)
- *    - Passagem de uniforms .................. desenhaObjeto() / loop principal
- *    - Matriz de Model ....................... montaModel()
- *    - Matriz de View ........................ Camera::getViewMatrix()  (Camera.h)
- *    - Cálculo de iluminação ................. Fragment Shader (abaixo)
- *    - Curva de Bézier ....................... evalClosedPath() (Bezier.h)
- * ==========================================================================*/
-
 #include <iostream>
 #include <fstream>
 #include <sstream>
@@ -33,10 +11,10 @@
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/type_ptr.hpp>
 
+#include "HudMenu.h"  
 #include "Camera.h"
 #include "Material.h"
-// A implementação da stb_image deve existir em UMA única unidade de compilação.
-// Mesh.h é quem inclui <stb_image.h>; definimos a macro só aqui, uma vez.
+
 #define STB_IMAGE_IMPLEMENTATION
 #include "Mesh.h"
 #include "Bezier.h"
@@ -44,10 +22,6 @@
 using namespace std;
 using glm::vec3;
 using glm::mat4;
-
-// ─────────────────────────────────────────────────────────────
-// Tipos da cena
-// ─────────────────────────────────────────────────────────────
 
 struct LightSrc
 {
@@ -70,23 +44,19 @@ struct SceneObject
     vec3  baseRotation = vec3(0.0f); // rotação fixa definida no arquivo de cena
     vec3  baseScale    = vec3(1.0f); // escala fixa definida no arquivo de cena
     float scaleUniform = 1.0f;       // escala uniforme
-    bool  spin         = false;      // giro automático (Triforce)
+    bool  spin         = false;      // giro automático
 
     // Trajetória de Bézier
     vector<vec3> waypoints;
     bool  animated  = false;
     float t         = 0.0f;
-    float speed     = 0.15f;          // fração da volta por segundo
+    float speed     = 0.3f;          // fração da volta por segundo
     vec3  bezierPos = vec3(0.0f);
 };
 
-// ─────────────────────────────────────────────────────────────
-// Globais
-// ─────────────────────────────────────────────────────────────
-
 int WIDTH = 1200, HEIGHT = 800;
 
-Camera camera(vec3(0.0f, 3.0f, 12.0f));
+Camera camera(vec3(0.0f, 7.0f, 15.0f));
 float  lastX = WIDTH / 2.0f, lastY = HEIGHT / 2.0f;
 bool   firstMouse = true;
 
@@ -95,15 +65,15 @@ float deltaTime = 0.0f, lastFrame = 0.0f;
 vector<SceneObject> objects;
 LightSrc            lights[3];
 int  selectedObject = 0;
-int  activeLight     = 0;     // luz cujo [ ] ajusta a intensidade
-bool useTexture      = true;  // M alterna textura <-> cor do material
-bool animating       = true;  // ESPAÇO dá play/pause na Bézier
+int  activeLight     = 0;     
+bool useTexture      = true;  
+bool animating       = true;  
 
-Mesh   lightMarker;           // marcador visual das fontes de luz
+Mesh   lightMarker;           
 GLuint shaderID = 0;
 
 // ─────────────────────────────────────────────────────────────
-// Shaders (raw string literals — fáceis de apontar na IDE)
+// Shaders
 // ─────────────────────────────────────────────────────────────
 
 const char* vertexShaderSource = R"(
@@ -201,23 +171,14 @@ void main()
 }
 )";
 
-// ─────────────────────────────────────────────────────────────
-// Protótipos
-// ─────────────────────────────────────────────────────────────
-
 GLuint setupShader();
 void   key_callback(GLFWwindow*, int, int, int, int);
 void   mouse_callback(GLFWwindow*, double, double);
 void   framebuffer_callback(GLFWwindow*, int, int);
 void   processInput(GLFWwindow*);
 bool   loadScene(const string& path);
-mat4   montaModel(const SceneObject& obj);
+mat4   buildModel(const SceneObject& obj);
 void   desenhaObjeto(SceneObject& obj, bool isSelected);
-void   imprimeAjuda();
-
-// ─────────────────────────────────────────────────────────────
-// Main
-// ─────────────────────────────────────────────────────────────
 
 int main()
 {
@@ -240,10 +201,11 @@ int main()
     cout << "OpenGL:   " << glGetString(GL_VERSION)  << endl;
 
     shaderID    = setupShader();
+    hudShaderID = setupHudShader();
+    setupHudBuffers();  
     lightMarker = makeLightMarker();
 
-    // Carrega a cena do arquivo de configuração.
-    const string sceneFile = "../src/Diorama/assets/cena.txt";
+    const string sceneFile = "../src/Diorama/assets/config.txt";
     if (!loadScene(sceneFile))
     {
         cout << "ERRO: nao foi possivel carregar a cena: " << sceneFile << endl;
@@ -252,7 +214,6 @@ int main()
     }
 
     glEnable(GL_DEPTH_TEST);
-    imprimeAjuda();
 
     while (!glfwWindowShouldClose(window))
     {
@@ -332,6 +293,7 @@ int main()
         glUniform1i(glGetUniformLocation(shaderID, "unlit"), 0);
 
         glBindVertexArray(0);
+        drawMenuOverlay();
         glfwSwapBuffers(window);
     }
 
@@ -340,10 +302,10 @@ int main()
 }
 
 // ─────────────────────────────────────────────────────────────
-// Monta a MATRIZ DE MODEL do objeto (Translação * Rotação * Escala)
+// constrói a MATRIZ DE MODEL do objeto (Translação * Rotação * Escala)
 // ─────────────────────────────────────────────────────────────
 
-mat4 montaModel(const SceneObject& obj)
+mat4 buildModel(const SceneObject& obj)
 {
     // Posição efetiva: trajetória de Bézier (se animado) + ajuste do usuário
     vec3 pos = (obj.animated ? obj.bezierPos : obj.basePosition) + obj.userTrans;
@@ -386,7 +348,7 @@ void desenhaObjeto(SceneObject& obj, bool isSelected)
         glBindTexture(GL_TEXTURE_2D, obj.material.texID);
     }
 
-    mat4 model = montaModel(obj);
+    mat4 model = buildModel(obj);
     glUniformMatrix4fv(glGetUniformLocation(shaderID, "model"),
                        1, GL_FALSE, glm::value_ptr(model));
 
@@ -484,7 +446,7 @@ bool loadScene(const string& path)
                 ++rotIndex;
             }
 
-            obj.mesh = loadGeometry(geom);
+            obj.mesh = loadSimpleOBJ(geom);
             aplicaMtlField(mtl, obj.material);
 
             if (tex != "-")
@@ -516,11 +478,16 @@ bool loadScene(const string& path)
 }
 
 // ─────────────────────────────────────────────────────────────
-// Entrada contínua (teclas seguradas)
+// Controles
 // ─────────────────────────────────────────────────────────────
 
 void processInput(GLFWwindow* window)
 {
+    static bool hWasPressed = false;
+    bool hPressed = glfwGetKey(window, GLFW_KEY_H) == GLFW_PRESS;
+    if (hPressed && !hWasPressed) showMenu = !showMenu;
+    hWasPressed = hPressed;
+
     // Câmera FPS
     if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS) camera.move(0, deltaTime);
     if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS) camera.move(1, deltaTime);
@@ -535,47 +502,55 @@ void processInput(GLFWwindow* window)
     float sv = 1.0f * deltaTime;   // velocidade de escala
 
     // Translação do objeto selecionado (J/L = X, I/K = Z, U/O = Y)
-bool moved = false;
-if (glfwGetKey(window, GLFW_KEY_J) == GLFW_PRESS) { obj.userTrans.x -= tv; moved = true; }
-if (glfwGetKey(window, GLFW_KEY_L) == GLFW_PRESS) { obj.userTrans.x += tv; moved = true; }
-if (glfwGetKey(window, GLFW_KEY_I) == GLFW_PRESS) { obj.userTrans.z -= tv; moved = true; }
-if (glfwGetKey(window, GLFW_KEY_K) == GLFW_PRESS) { obj.userTrans.z += tv; moved = true; }
-if (glfwGetKey(window, GLFW_KEY_U) == GLFW_PRESS) obj.userTrans.y += tv;
-if (glfwGetKey(window, GLFW_KEY_O) == GLFW_PRESS) obj.userTrans.y -= tv;
+    bool moved = false;
+    if (glfwGetKey(window, GLFW_KEY_J) == GLFW_PRESS) { obj.userTrans.x -= tv; moved = true; }
+    if (glfwGetKey(window, GLFW_KEY_L) == GLFW_PRESS) { obj.userTrans.x += tv; moved = true; }
+    if (glfwGetKey(window, GLFW_KEY_I) == GLFW_PRESS) { obj.userTrans.z -= tv; moved = true; }
+    if (glfwGetKey(window, GLFW_KEY_K) == GLFW_PRESS) { obj.userTrans.z += tv; moved = true; }
+    if (glfwGetKey(window, GLFW_KEY_O) == GLFW_PRESS) { obj.userTrans.y += tv; moved = true; };
+    if (glfwGetKey(window, GLFW_KEY_U) == GLFW_PRESS) { obj.userTrans.y -= tv; moved = true; };
 
-// Imprime a posição efetiva do objeto sempre que ele é movido com I/J/K/L
-// (throttle de 0.1s para não inundar o console enquanto a tecla fica segurada)
-if (moved)
-{
-    static float lastPrint = 0.0f;
-    float now = (float)glfwGetTime();
-    if (now - lastPrint > 0.1f)
+    if (moved)
     {
-        vec3 pos = obj.basePosition + obj.userTrans; // posição final no mundo
-        cout << "[" << obj.name << "] pos = ("
-             << pos.x << ", " << pos.y << ", " << pos.z << ")" << endl;
-        lastPrint = now;
+        static float lastPrint = 0.0f;
+        float now = (float)glfwGetTime();
+        if (now - lastPrint > 0.1f)
+        {
+            vec3 pos = obj.basePosition + obj.userTrans; // posição final no mundo
+            cout << "[" << obj.name << "] pos = ("
+                << pos.x << ", " << pos.y << ", " << pos.z << ")" << endl;
+            lastPrint = now;
+        }
     }
-}
-    // Rotação em Y (R / T)
-    if (glfwGetKey(window, GLFW_KEY_R) == GLFW_PRESS) obj.rotation.y -= rv;
-    if (glfwGetKey(window, GLFW_KEY_T) == GLFW_PRESS) obj.rotation.y += rv;
+    // Rotação em X (Z / X)
+    if (glfwGetKey(window, GLFW_KEY_Z) == GLFW_PRESS) obj.rotation.x -= rv;
+    if (glfwGetKey(window, GLFW_KEY_X) == GLFW_PRESS) obj.rotation.x += rv;
+
+    // Rotação em Y (C / V)
+    if (glfwGetKey(window, GLFW_KEY_C) == GLFW_PRESS) obj.rotation.y -= rv;
+    if (glfwGetKey(window, GLFW_KEY_V) == GLFW_PRESS) obj.rotation.y += rv;
+
+    // Rotação em Z (B / N)
+    if (glfwGetKey(window, GLFW_KEY_B) == GLFW_PRESS) obj.rotation.z -= rv;
+    if (glfwGetKey(window, GLFW_KEY_N) == GLFW_PRESS) obj.rotation.z += rv;
 
     // Escala uniforme (+ / -)
     if (glfwGetKey(window, GLFW_KEY_EQUAL) == GLFW_PRESS) obj.scaleUniform += sv;
     if (glfwGetKey(window, GLFW_KEY_MINUS) == GLFW_PRESS)
         obj.scaleUniform = glm::max(0.05f, obj.scaleUniform - sv);
 
-    // Intensidade da luz ativa ( [ diminui  ] aumenta )
-    if (glfwGetKey(window, GLFW_KEY_LEFT_BRACKET) == GLFW_PRESS)
+    // Intensidade da luz ativa ( F5 diminui  F6 aumenta )
+    if (glfwGetKey(window, GLFW_KEY_F5) == GLFW_PRESS)
+    {
+        printf("Luz [%d] intensidade: %.2f -> ", activeLight, lights[activeLight].intensity, "\n");
         lights[activeLight].intensity = glm::max(0.0f, lights[activeLight].intensity - sv);
-    if (glfwGetKey(window, GLFW_KEY_RIGHT_BRACKET) == GLFW_PRESS)
+    }
+    if (glfwGetKey(window, GLFW_KEY_F6) == GLFW_PRESS)
+    {
+        printf("Luz [%d] intensidade: %.2f -> ", activeLight, lights[activeLight].intensity, "\n");
         lights[activeLight].intensity += sv;
+    }
 }
-
-// ─────────────────────────────────────────────────────────────
-// Entrada discreta (teclas pressionadas uma vez)
-// ─────────────────────────────────────────────────────────────
 
 void key_callback(GLFWwindow* window, int key, int, int action, int)
 {
@@ -608,8 +583,7 @@ void key_callback(GLFWwindow* window, int key, int, int action, int)
         o.rotation  = vec3(0.0f);
         o.baseScale    = vec3(1.0f);
         o.scaleUniform = 1.0f;
-        cout << "Transformacoes resetadas." << endl;
-    }
+     }
 
     // Liga/desliga cada luz
     if (key == GLFW_KEY_F1) { lights[0].enabled = !lights[0].enabled; cout << "Luz key  " << (lights[0].enabled?"ON":"OFF") << endl; }
@@ -617,25 +591,21 @@ void key_callback(GLFWwindow* window, int key, int, int action, int)
     if (key == GLFW_KEY_F3) { lights[2].enabled = !lights[2].enabled; cout << "Luz back " << (lights[2].enabled?"ON":"OFF") << endl; }
 
     // Luz ativa para ajuste de intensidade
-    if (key == GLFW_KEY_G)
+    if (key == GLFW_KEY_F4)
     {
         activeLight = (activeLight + 1) % 3;
-        cout << "Luz ativa p/ intensidade: [" << activeLight << "] "
+        cout << "Luz ativa: [" << activeLight << "] "
              << lights[activeLight].name << endl;
     }
 
-    // Alterna material(.mtl) <-> textura
-    if (key == GLFW_KEY_M)
+    if (key == GLFW_KEY_T)
     {
         useTexture = !useTexture;
-        cout << "Exibicao: " << (useTexture ? "TEXTURA" : "COR DO MATERIAL (.mtl)") << endl;
     }
 
-    // Play / pause da animação de Bézier
     if (key == GLFW_KEY_SPACE)
     {
         animating = !animating;
-        cout << "Animacao Bezier: " << (animating ? "PLAY" : "PAUSE") << endl;
     }
 }
 
@@ -691,24 +661,4 @@ GLuint setupShader()
     glDeleteShader(vs);
     glDeleteShader(fs);
     return prog;
-}
-
-// ─────────────────────────────────────────────────────────────
-// Legenda de controles
-// ─────────────────────────────────────────────────────────────
-
-void imprimeAjuda()
-{
-    cout << "\n========== DIORAMA - CONTROLES ==========\n"
-         << " Camera:      W A S D + mouse\n"
-         << " Selecionar:  TAB (proximo) | 1-9 (indice)\n"
-         << " Transladar:  J/L = X   I/K = Z   U/O = Y\n"
-         << " Rotacionar:  R / T  (eixo Y)\n"
-         << " Escala:      + / -  (uniforme)   | 0 = reset\n"
-         << " Luzes:       F1/F2/F3 liga-desliga key/fill/back\n"
-         << "              G = troca luz ativa | [ ] = intensidade\n"
-         << " Material:    M = textura <-> cor do material (.mtl)\n"
-         << " Animacao:    ESPACO = play/pause (Bezier)\n"
-         << " Sair:        ESC\n"
-         << "===============================================\n" << endl;
 }

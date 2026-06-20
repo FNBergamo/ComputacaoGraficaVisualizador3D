@@ -1,20 +1,9 @@
-/* Bezier.h - Curvas paramétricas de Bézier (animação de trajetória)
- *
- * Substitui a interpolação linear (mix) do trabalho de Trajetórias por uma
- * curva suave. O núcleo é a fórmula da BÉZIER CÚBICA:
- *
- *   B(t) = (1-t)^3 P0 + 3(1-t)^2 t P1 + 3(1-t) t^2 P2 + t^3 P3,  t in [0,1]
- *
- * Para fechar um ciclo passando por uma lista de "waypoints", cada par de
- * waypoints vira um segmento cúbico cujos pontos de controle intermediários
- * (P1, P2) são derivados das tangentes de Catmull-Rom dos vizinhos.
- */
 #pragma once
 
 #include <vector>
 #include <glm/glm.hpp>
 
-// Fórmula clássica da Bézier cúbica (forma de Bernstein).
+// Fórmula da Bézier cúbica (forma de Bernstein).
 inline glm::vec3 bezierCubic(const glm::vec3& P0, const glm::vec3& P1,
                              const glm::vec3& P2, const glm::vec3& P3, float t)
 {

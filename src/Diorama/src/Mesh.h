@@ -1,15 +1,3 @@
-/* Mesh.h - Geometria: carregamento de OBJ e geometria procedural
- *
- * Formato de vértice UNIFICADO (8 floats):
- *     posição (x,y,z)  |  normal (nx,ny,nz)  |  uv (u,v)
- *     atributo 0          atributo 1            atributo 2
- *
- * Esse formato serve tanto para o mapeamento de textura quanto para o
- * cálculo de iluminação (que precisa das normais).
- *
- * Reaproveita o loadSimpleOBJ / loadTexture dos trabalhos anteriores,
- * estendidos para empacotar também a normal.
- */
 #pragma once
 
 #include <iostream>
@@ -29,11 +17,6 @@ struct Mesh
     int    nVertices = 0;
 };
 
-// ─────────────────────────────────────────────────────────────
-// Helpers de construção
-// ─────────────────────────────────────────────────────────────
-
-// Empacota um vértice (pos + normal + uv) no buffer.
 inline void pushVertex(std::vector<float>& buf,
                        const glm::vec3& p, const glm::vec3& n, const glm::vec2& uv)
 {
@@ -68,10 +51,6 @@ inline Mesh createMesh(const std::vector<float>& buf)
     glBindVertexArray(0);
     return mesh;
 }
-
-// ─────────────────────────────────────────────────────────────
-// Carregamento de OBJ
-// ─────────────────────────────────────────────────────────────
 
 inline Mesh loadSimpleOBJ(const std::string& filePath)
 {
@@ -111,7 +90,6 @@ inline Mesh loadSimpleOBJ(const std::string& filePath)
         }
         else if (word == "f")
         {
-            // Coleta todos os índices da face (suporta triângulos e quads).
             std::vector<int> vi, ti, ni;
             std::string token;
             while (ss >> token)
@@ -125,12 +103,10 @@ inline Mesh loadSimpleOBJ(const std::string& filePath)
                 vi.push_back(iv); ti.push_back(it); ni.push_back(in);
             }
 
-            // Triangulação em leque: (0, k, k+1)
             for (size_t k = 1; k + 1 < vi.size(); ++k)
             {
                 int tri[3] = { (int)0, (int)k, (int)(k + 1) };
 
-                // Normal geométrica caso o OBJ não traga vn.
                 glm::vec3 faceN(0.0f);
                 if (ni[tri[0]] < 0 || normals.empty())
                 {
@@ -157,10 +133,6 @@ inline Mesh loadSimpleOBJ(const std::string& filePath)
     std::cout << "[OBJ] " << filePath << " (" << mesh.nVertices << " vertices)" << std::endl;
     return mesh;
 }
-
-// ─────────────────────────────────────────────────────────────
-// Textura
-// ─────────────────────────────────────────────────────────────
 
 inline GLuint loadTexture(const std::string& filePath)
 {
@@ -224,17 +196,3 @@ inline Mesh makeSphere(float radius = 0.5f, int stacks = 24, int sectors = 24)
 
 // Pequena esfera/cubo para marcar visualmente uma fonte de luz.
 inline Mesh makeLightMarker() { return makeSphere(0.15f, 10, 10); };
-
-// Despacha a geometria a partir de uma "spec":
-//   "PROC:sphere"
-//   ou um caminho para arquivo .obj.
-inline Mesh loadGeometry(const std::string& spec)
-{
-    if (spec.rfind("PROC:", 0) == 0)
-    {
-        std::string kind = spec.substr(5);
-        if (kind == "sphere")   return makeSphere();
-        std::cerr << "[GEO] Procedural desconhecida: " << kind << std::endl;
-    }
-    return loadSimpleOBJ(spec);
-}

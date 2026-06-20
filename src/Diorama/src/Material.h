@@ -4,7 +4,7 @@
  *   Ka -> reflexão ambiente
  *   Kd -> reflexão difusa
  *   Ks -> reflexão especular
- *   Ns -> expoente especular (shininess)
+ *   Ns -> expoente especular (brilho)
  *   map_Kd -> arquivo de textura difusa
  *
  * Esses valores são depois enviados como uniforms ao Fragment Shader, onde
@@ -24,16 +24,14 @@ struct Material
     glm::vec3 Ka = glm::vec3(0.2f);          // ambiente
     glm::vec3 Kd = glm::vec3(0.8f);          // difusa
     glm::vec3 Ks = glm::vec3(0.5f);          // especular
-    float     Ns = 32.0f;                    // expoente especular (shininess)
-
-    bool      hasTexture = false;            // tem textura difusa?
+    float     Ns = 32.0f;                    // expoente especular (brilho)
+    bool      hasTexture = false;            
     GLuint    texID      = 0;                // id da textura no OpenGL
     std::string mapKd;                       // nome do arquivo de textura (map_Kd)
 };
 
 // Lê um arquivo .mtl e preenche os coeficientes do material.
-// Campos ausentes mantêm os defaults (ex.: Suzanne.mtl não traz Kd -> 0.8;
-// Cube.mtl é vazio -> material neutro). Retorna false se o arquivo não abrir.
+// Campos ausentes mantêm os defaults
 inline bool loadMTL(const std::string& filePath, Material& mat)
 {
     std::ifstream file(filePath);
@@ -60,13 +58,6 @@ inline bool loadMTL(const std::string& filePath, Material& mat)
             mat.hasTexture = true;
         }
     }
-
-    std::cout << "[MTL] " << filePath
-              << "  Ka(" << mat.Ka.r << "," << mat.Ka.g << "," << mat.Ka.b << ")"
-              << "  Kd(" << mat.Kd.r << "," << mat.Kd.g << "," << mat.Kd.b << ")"
-              << "  Ks(" << mat.Ks.r << "," << mat.Ks.g << "," << mat.Ks.b << ")"
-              << "  Ns=" << mat.Ns
-              << (mat.hasTexture ? ("  map_Kd=" + mat.mapKd) : "")
-              << std::endl;
+    
     return true;
 }

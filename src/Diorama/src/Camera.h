@@ -1,9 +1,3 @@
-/* Camera.h - Câmera virtual estilo FPS (yaw + pitch)
- *
- * Base: a classe Camera do trabalho de Trajetorias.cpp.
- * Responsável por produzir a MATRIZ DE VISUALIZAÇÃO (view) com glm::lookAt,
- * a partir da posição da câmera e dos ângulos de yaw/pitch.
- */
 #pragma once
 
 #include <glm/glm.hpp>
@@ -31,13 +25,11 @@ public:
         updateVectors();
     }
 
-    // Matriz de visualização (View) — é aqui que a câmera vira matriz.
     glm::mat4 getViewMatrix() const
     {
         return glm::lookAt(position, position + front, up);
     }
 
-    // Movimentação no plano da câmera. direction: 0=frente 1=trás 2=esq 3=dir
     void move(int direction, float deltaTime)
     {
         float velocity = speed * deltaTime;
@@ -50,7 +42,6 @@ public:
         }
     }
 
-    // Rotação a partir do offset do mouse.
     void rotate(float xOffset, float yOffset)
     {
         yaw   += xOffset * sensitivity;
@@ -61,7 +52,6 @@ public:
     }
 
 private:
-    // Recalcula os vetores front/right/up a partir de yaw e pitch.
     void updateVectors()
     {
         glm::vec3 f;
